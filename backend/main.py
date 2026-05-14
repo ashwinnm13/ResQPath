@@ -1,10 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from routers import hospital, ambulance
 
 from db import db
 
 app = FastAPI()
-
+app.include_router(hospital.router)
+app.include_router(ambulance.router)
 
 app.add_middleware(
     CORSMiddleware,
