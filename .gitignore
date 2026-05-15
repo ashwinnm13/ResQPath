@@ -1,1 +1,21 @@
 backend/.env
+
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Environment
+.env
+
+# Node
+node_modules/
+
+# Vite
+dist/
+
+# VS Code
+.vscode/
+
+# ML
+*.pkl

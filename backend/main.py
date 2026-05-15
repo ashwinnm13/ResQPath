@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import hospital, ambulance ,incident , route
+from routers import hospital, ambulance ,incident , route , predict
 
 from db import db
 
@@ -9,6 +9,7 @@ app.include_router(hospital.router)
 app.include_router(ambulance.router)
 app.include_router(incident.router) 
 app.include_router(route.router)
+app.include_router(predict.router)
 
 
 app.add_middleware(
