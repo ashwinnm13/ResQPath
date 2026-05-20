@@ -14,10 +14,18 @@ db.hospitals.create_index([("location", "2dsphere")])
 
 ambulances = [
     {
-        "name": "Ambulance 1",
+        "name": "Chennai Ambulance 1",
         "location": {
             "type": "Point",
             "coordinates": [80.2707, 13.0827]
+        },
+        "status": "available"
+    },
+    {
+        "name": "Pondicherry Ambulance 1",
+        "location": {
+            "type": "Point",
+            "coordinates": [79.8307, 11.9416]
         },
         "status": "available"
     }
@@ -32,6 +40,15 @@ hospitals = [
         },
         "beds": 120,
         "occupancy_rate": 72
+    },
+    {
+        "name": "Pondicherry General Hospital",
+        "location": {
+            "type": "Point",
+            "coordinates": [79.8378, 11.9341]
+        },
+        "beds": 100,
+        "occupancy_rate": 65
     }
 ]
 

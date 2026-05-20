@@ -7,6 +7,7 @@ import pandas as pd
 import httpx
 import os
 from dotenv import load_dotenv
+from utils.feature_mapper import map_symptoms_to_features
 
 load_dotenv()
 
@@ -25,21 +26,12 @@ class DispatchRequest(BaseModel):
 
     patient_name: str
 
+    age: int
+    pain_score: int
+    symptoms: list  # ["chest_pain", "breathing_issue", etc.]
+
     lat: float = Field(..., ge=-90, le=90)
     lng: float = Field(..., ge=-180, le=180)
-
-    age: int
-    heart_rate: int
-    bp_sys: int
-    bp_dia: int
-    spo2: int
-    resp_rate: int
-    pain_score: int
-
-    chest_pain: int
-    breathing_issue: int
-    bleeding: int
-    unconscious: int
 
 
 # -----------------------------
@@ -49,21 +41,31 @@ class DispatchRequest(BaseModel):
 async def dispatch(data: DispatchRequest):
 
     # =========================================
-    # STEP 1 → ML Prediction
+    # STEP 1 → Map Symptoms to Features
+    # =========================================
+
+    features = map_symptoms_to_features({
+        "age": data.age,
+        "pain_score": data.pain_score,
+        "symptoms": data.symptoms
+    })
+
+    # =========================================
+    # STEP 2 → ML Prediction
     # =========================================
 
     input_df = pd.DataFrame([{
-        "age": data.age,
-        "heart_rate": data.heart_rate,
-        "bp_sys": data.bp_sys,
-        "bp_dia": data.bp_dia,
-        "spo2": data.spo2,
-        "resp_rate": data.resp_rate,
-        "pain_score": data.pain_score,
-        "chest_pain": data.chest_pain,
-        "breathing_issue": data.breathing_issue,
-        "bleeding": data.bleeding,
-        "unconscious": data.unconscious
+        "age": features["age"],
+        "heart_rate": features["heart_rate"],
+        "bp_sys": features["bp_sys"],
+        "bp_dia": features["bp_dia"],
+        "spo2": features["spo2"],
+        "resp_rate": features["resp_rate"],
+        "pain_score": features["pain_score"],
+        "chest_pain": features["chest_pain"],
+        "breathing_issue": features["breathing_issue"],
+        "bleeding": features["bleeding"],
+        "unconscious": features["unconscious"]
     }])
 
     prediction = model.predict(input_df)[0]
@@ -77,7 +79,7 @@ async def dispatch(data: DispatchRequest):
     severity = labels[prediction]
 
     # =========================================
-    # STEP 2 → Find Nearest Ambulance
+    # STEP 3 → Find Nearest Ambulance
     # =========================================
 
     ambulance = await db.ambulances.find_one({
@@ -99,7 +101,7 @@ async def dispatch(data: DispatchRequest):
         )
 
     # =========================================
-    # STEP 3 → Find Best Hospital
+    # STEP 4 → Find Best Hospital
     # =========================================
 
     hospitals_cursor = db.hospitals.find({
@@ -115,10 +117,16 @@ async def dispatch(data: DispatchRequest):
 
     hospitals = await hospitals_cursor.to_list(length=5)
 
+    if not hospitals:
+        raise HTTPException(
+            status_code=503,
+            detail="No hospital available"
+        )
+
     best_hospital = hospitals[0]
 
     # =========================================
-    # STEP 4 → Fetch Route from ORS
+    # STEP 5 → Fetch Route from ORS
     # =========================================
 
     ors_url = "https://api.openrouteservice.org/v2/directions/driving-car"
@@ -166,7 +174,7 @@ async def dispatch(data: DispatchRequest):
         polyline = "Route unavailable"
 
     # =========================================
-    # STEP 5 → Create Incident
+    # STEP 6 → Create Incident
     # =========================================
 
     incident = {
@@ -188,7 +196,7 @@ async def dispatch(data: DispatchRequest):
     result = await db.incidents.insert_one(incident)
 
     # =========================================
-    # STEP 6 → Update Ambulance Status
+    # STEP 7 → Update Ambulance Status
     # =========================================
 
     await db.ambulances.update_one(
@@ -201,7 +209,7 @@ async def dispatch(data: DispatchRequest):
     )
 
     # =========================================
-    # FINAL RESPONSE
+    # STEP 8 → Final Response
     # =========================================
 
     return {
@@ -210,19 +218,32 @@ async def dispatch(data: DispatchRequest):
 
         "severity": severity,
 
+        "patient_location": {
+            "lat": data.lat,
+            "lng": data.lng
+        },
+
         "ambulance": {
             "id": str(ambulance["_id"]),
-            "name": ambulance["name"]
+            "name": ambulance["name"],
+            "location": {
+                "lat": ambulance["location"]["coordinates"][1],
+                "lng": ambulance["location"]["coordinates"][0]
+            }
         },
 
         "hospital": {
             "id": str(best_hospital["_id"]),
-            "name": best_hospital["name"]
+            "name": best_hospital["name"],
+            "location": {
+                "lat": best_hospital["location"]["coordinates"][1],
+                "lng": best_hospital["location"]["coordinates"][0]
+            }
         },
 
         "route": {
            "distance_km": distance_km,
            "duration_minutes": duration_minutes,
            "polyline": polyline
-}
+        }
     }

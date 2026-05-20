@@ -1,30 +1,29 @@
-import axios from "axios"
-import { useEffect, useState } from "react"
+import { useState } from "react";
+
+import EmergencyForm from "../components/EmergencyForm";
+import MapView from "../components/MapView";
+import DispatchCard from "../components/DispatchCard";
 
 function Dashboard() {
-  const [ambulances, setAmbulances] = useState([])
 
-  useEffect(() => {
-    axios.get("http://127.0.0.1:8000/ambulances")
-      .then((res) => {
-        setAmbulances(res.data)
-      })
-      .catch((err) => {
-        console.log(err)
-      })
-  }, [])
+  const [dispatchData, setDispatchData] = useState(null);
 
   return (
-    <div>
-      <h1>Ambulances</h1>
 
-      {ambulances.map((a, index) => (
-        <div key={index}>
-          {a.name}
-        </div>
-      ))}
+    <div>
+
+      <h1>ResQPath Dashboard</h1>
+
+      <EmergencyForm
+        setDispatchData={setDispatchData}
+      />
+
+      <MapView dispatchData={dispatchData} />
+
+      <DispatchCard dispatchData={dispatchData} />
+
     </div>
-  )
+  );
 }
 
-export default Dashboard
+export default Dashboard;
