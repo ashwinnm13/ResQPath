@@ -1,87 +1,129 @@
-
 import {
   MapContainer,
   TileLayer,
   Marker,
-  Popup,
-  Polyline
-} from "react-leaflet";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+  Polyline,
+  Popup
+} from "react-leaflet"
 
-// Fix default icon issue
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-});
+import L from "leaflet"
+import "leaflet/dist/leaflet.css"
 
+// Custom marker icons with different colors and symbols
+const createCustomIcon = (color, symbol) => {
+  const svgIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="32" height="32">
+    <circle cx="12" cy="12" r="11" fill="${color}" stroke="white" stroke-width="2"/>
+    <text x="12" y="16" font-size="14" font-weight="bold" fill="white" text-anchor="middle">${symbol}</text>
+  </svg>`
+
+  return L.icon({
+    iconUrl: `data:image/svg+xml;base64,${btoa(svgIcon)}`,
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -32],
+  })
+}
+
+const patientIcon = createCustomIcon("#EF4444", "P")      // Red for Patient
+const ambulanceIcon = createCustomIcon("#3B82F6", "A")     // Blue for Ambulance
+const hospitalIcon = createCustomIcon("#10B981", "H")      // Green for Hospital
+
+// Decode ORS polyline
 function decodePolyline(encoded) {
 
-  let points = [];
-  let index = 0, lat = 0, lng = 0;
+  let points = []
+  let index = 0
+  let lat = 0
+  let lng = 0
 
   while (index < encoded.length) {
 
-    let b, shift = 0, result = 0;
+    let b
+    let shift = 0
+    let result = 0
 
     do {
-      b = encoded.charCodeAt(index++) - 63;
-      result |= (b & 0x1f) << shift;
-      shift += 5;
-    } while (b >= 0x20);
+      b = encoded.charCodeAt(index++) - 63
+      result |= (b & 0x1f) << shift
+      shift += 5
+    } while (b >= 0x20)
 
-    let dlat = ((result & 1) ? ~(result >> 1) : (result >> 1));
-    lat += dlat;
+    let dlat =
+      (result & 1)
+        ? ~(result >> 1)
+        : (result >> 1)
 
-    shift = 0;
-    result = 0;
+    lat += dlat
+
+    shift = 0
+    result = 0
 
     do {
-      b = encoded.charCodeAt(index++) - 63;
-      result |= (b & 0x1f) << shift;
-      shift += 5;
-    } while (b >= 0x20);
+      b = encoded.charCodeAt(index++) - 63
+      result |= (b & 0x1f) << shift
+      shift += 5
+    } while (b >= 0x20)
 
-    let dlng = ((result & 1) ? ~(result >> 1) : (result >> 1));
-    lng += dlng;
+    let dlng =
+      (result & 1)
+        ? ~(result >> 1)
+        : (result >> 1)
 
-    points.push([lat / 1e5, lng / 1e5]);
+    lng += dlng
+
+    points.push([
+      lat / 1e5,
+      lng / 1e5
+    ])
   }
 
-  return points;
+  return points
 }
 
-function MapView({ dispatchData }) {
+function MapView({
+  dispatchData,
+  liveData
+}) {
 
   if (!dispatchData) {
-    return <div>Map View</div>;
+    return <div>Map View</div>
   }
 
+  // Patient position
   const callerPosition = [
     dispatchData.patient_location.lat,
     dispatchData.patient_location.lng
-  ];
+  ]
 
+  // Hospital position
   const hospitalPosition = [
     dispatchData.hospital.location.lat,
     dispatchData.hospital.location.lng
-  ];
+  ]
 
-  const ambulancePosition = [
-    dispatchData.ambulance.location.lat,
-    dispatchData.ambulance.location.lng
-  ];
+  // LIVE ambulance movement
+  const ambulancePosition = liveData
+    ? [
+        liveData.ambulance_location.lat,
+        liveData.ambulance_location.lng
+      ]
+    : [
+        dispatchData.ambulance.location.lat,
+        dispatchData.ambulance.location.lng
+      ]
 
-  let polyline = [];
+  // Decode route polyline
+  let polyline = []
 
   if (
     dispatchData.route?.polyline &&
     typeof dispatchData.route.polyline === "string" &&
     dispatchData.route.polyline !== "Route unavailable"
   ) {
-    polyline = decodePolyline(dispatchData.route.polyline);
+
+    polyline = decodePolyline(
+      dispatchData.route.polyline
+    )
   }
 
   return (
@@ -100,28 +142,53 @@ function MapView({ dispatchData }) {
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
 
-      <Marker position={callerPosition}>
+      {/* Patient Marker */}
+      <Marker position={callerPosition} icon={patientIcon}>
         <Popup>
-          Patient Location
+          <strong>Patient Location</strong>
+          <br />
+          Lat: {callerPosition[0].toFixed(4)}
+          <br />
+          Lng: {callerPosition[1].toFixed(4)}
         </Popup>
       </Marker>
 
-      <Marker position={ambulancePosition}>
+      {/* Live Ambulance Marker */}
+      <Marker position={ambulancePosition} icon={ambulanceIcon}>
         <Popup>
-          Ambulance
+          <strong>🚑 Ambulance</strong>
+          <br />
+          Status: {liveData?.status || "EN_ROUTE"}
+          <br />
+          Lat: {ambulancePosition[0].toFixed(4)}
+          <br />
+          Lng: {ambulancePosition[1].toFixed(4)}
         </Popup>
       </Marker>
 
-      <Marker position={hospitalPosition}>
+      {/* Hospital Marker */}
+      <Marker position={hospitalPosition} icon={hospitalIcon}>
         <Popup>
-          Hospital
+          <strong>Hospital</strong>
+          <br />
+          {dispatchData.hospital.name}
+          <br />
+          Lat: {hospitalPosition[0].toFixed(4)}
+          <br />
+          Lng: {hospitalPosition[1].toFixed(4)}
         </Popup>
       </Marker>
 
-      {polyline.length > 0 && <Polyline positions={polyline} />}
+      {/* Route */}
+      {
+        polyline.length > 0 &&
+        (
+          <Polyline positions={polyline} />
+        )
+      }
 
     </MapContainer>
-  );
+  )
 }
 
-export default MapView;
+export default MapView

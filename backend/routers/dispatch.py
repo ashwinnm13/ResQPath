@@ -82,23 +82,43 @@ async def dispatch(data: DispatchRequest):
     # STEP 3 → Find Nearest Ambulance
     # =========================================
 
-    ambulance = await db.ambulances.find_one({
+    # Find all available ambulances within 15km radius, sorted by distance
+    ambulances_cursor = db.ambulances.find({
         "status": "available",
         "location": {
             "$near": {
                 "$geometry": {
                     "type": "Point",
                     "coordinates": [data.lng, data.lat]
-                }
+                },
+                "$maxDistance": 15000  # 15km in meters
             }
         }
     })
 
-    if not ambulance:
+    ambulances_list = await ambulances_cursor.to_list(length=10)
+
+    if not ambulances_list:
+        # If no ambulance within 15km, get the absolute nearest one
+        ambulances_list = await db.ambulances.find({
+            "status": "available",
+            "location": {
+                "$near": {
+                    "$geometry": {
+                        "type": "Point",
+                        "coordinates": [data.lng, data.lat]
+                    }
+                }
+            }
+        }).to_list(length=1)
+
+    if not ambulances_list:
         raise HTTPException(
             status_code=503,
             detail="No ambulance available"
         )
+
+    ambulance = ambulances_list[0]
 
     # =========================================
     # STEP 4 → Find Best Hospital

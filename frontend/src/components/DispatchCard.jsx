@@ -1,19 +1,50 @@
-import React from 'react';
+import React from "react"
 
-
-function DispatchCard({ dispatchData }) {
+function DispatchCard({
+  dispatchData,
+  liveData
+}) {
 
   if (!dispatchData) {
-    return <div>No dispatch yet</div>;
+    return <div>No dispatch yet</div>
   }
+
+  const severityColors = {
+  LOW: "green",
+  MEDIUM: "orange",
+  CRITICAL: "red"
+}
+
+  const status =
+    liveData?.status || "EN_ROUTE"
 
   return (
 
-    <div>
+    <div
+      style={{
+        marginTop: "20px",
+        padding: "20px",
+        border: "1px solid gray",
+        borderRadius: "10px"
+      }}
+    >
 
       <h2>Dispatch Result</h2>
 
-      <p>
+      <h3>
+        Status:
+        {status}
+      </h3>
+
+      <p
+       style={{
+       color:
+        severityColors[
+         dispatchData.severity
+      ]
+  }}
+      
+      >
         Severity:
         {dispatchData.severity}
       </p>
@@ -30,16 +61,18 @@ function DispatchCard({ dispatchData }) {
 
       <p>
         ETA:
-        {dispatchData.route.duration_minutes} mins
+        {dispatchData.route.duration_minutes}
+        mins
       </p>
 
       <p>
         Distance:
-        {dispatchData.route.distance_km} km
+        {dispatchData.route.distance_km}
+        km
       </p>
 
     </div>
-  );
+  )
 }
 
-export default DispatchCard;
+export default DispatchCard
