@@ -2,8 +2,28 @@ from fastapi import APIRouter, WebSocket
 from db import db
 from bson import ObjectId
 import asyncio
+import math
 
 router = APIRouter()
+
+def haversine(lat1, lon1, lat2, lon2):
+    radius_km = 6371
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return radius_km * c
+
+
+def compute_remaining_route(total_distance, total_duration, current_step, total_steps):
+    if total_steps <= 0 or total_distance == 0:
+        return 0.0, 0.0
+
+    remaining_fraction = max(0, (total_steps - current_step) / total_steps)
+    remaining_distance = round(total_distance * remaining_fraction, 2)
+    remaining_duration = round(total_duration * remaining_fraction, 2)
+    return remaining_distance, remaining_duration
+
 
 def decodePolyline(encoded):
     """Decode ORS polyline to list of coordinates"""
@@ -78,6 +98,10 @@ async def websocket_endpoint(
         ambulance_lat = ambulance["location"]["coordinates"][1]
         ambulance_lng = ambulance["location"]["coordinates"][0]
 
+        # Determine route metrics for remaining distance/time
+        total_distance_km = float(incident.get("route", {}).get("distance_km") or haversine(ambulance_lat, ambulance_lng, patient_lat, patient_lng))
+        total_duration_minutes = float(incident.get("route", {}).get("duration_minutes") or (total_distance_km / 40) * 60)
+
         # Generate route waypoints from ambulance to patient
         # Simple linear interpolation between ambulance and patient location
         steps = 10
@@ -105,13 +129,24 @@ async def websocket_endpoint(
 
         # Stream ambulance movement
         for i in range(len(waypoints)):
+            remaining_distance, remaining_duration = compute_remaining_route(
+                total_distance_km,
+                total_duration_minutes,
+                i,
+                steps
+            )
+
             data = {
                 "incident_id": incident_id,
                 "ambulance_location": {
                     "lat": waypoints[i][0],
                     "lng": waypoints[i][1]
                 },
-                "status": statuses[i]
+                "status": statuses[i],
+                "route": {
+                    "distance_km": remaining_distance,
+                    "duration_minutes": remaining_duration
+                }
             }
 
             await websocket.send_json(data)

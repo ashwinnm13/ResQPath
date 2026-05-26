@@ -1,0 +1,127 @@
+.preloader-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #f0fffc 0%, #dbfff7 50%, #c8f8f0 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: fadeOut 0.6s ease-in-out 2.4s forwards;
+  pointer-events: none;
+}
+
+.preloader-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 40px;
+}
+
+.ambulance-loader {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.ambulance-icon {
+  width: 80px;
+  height: 80px;
+  color: #02c39a;
+  animation: ambulanceFloat 2s ease-in-out infinite;
+  filter: drop-shadow(0 4px 12px rgba(2, 195, 154, 0.3));
+}
+
+.loader-text {
+  font-size: 24px;
+  font-weight: 700;
+  color: #02c39a;
+  letter-spacing: 0.05em;
+  animation: textPulse 1.5s ease-in-out infinite;
+}
+
+.loader-dots {
+  display: flex;
+  gap: 10px;
+}
+
+.loader-dots span {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #02c39a;
+  animation: dotBounce 1.4s infinite;
+}
+
+.loader-dots span:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.loader-dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.loader-dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes ambulanceFloat {
+  0%, 100% {
+    transform: translateY(0px) scale(1);
+  }
+  50% {
+    transform: translateY(-10px) scale(1.05);
+  }
+}
+
+@keyframes textPulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.02);
+  }
+}
+
+@keyframes dotBounce {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(-8px) scale(1.2);
+    opacity: 0.8;
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+    visibility: visible;
+  }
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+@media (max-width: 768px) {
+  .ambulance-icon {
+    width: 60px;
+    height: 60px;
+  }
+
+  .loader-text {
+    font-size: 20px;
+  }
+
+  .preloader-container {
+    gap: 30px;
+  }
+}

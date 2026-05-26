@@ -99,9 +99,22 @@ async def dispatch(data: DispatchRequest):
     ambulances_list = await ambulances_cursor.to_list(length=10)
 
     if not ambulances_list:
-        # If no ambulance within 15km, get the absolute nearest one
+        # If no available ambulance within 15km, get the nearest available ambulance anywhere.
         ambulances_list = await db.ambulances.find({
             "status": "available",
+            "location": {
+                "$near": {
+                    "$geometry": {
+                        "type": "Point",
+                        "coordinates": [data.lng, data.lat]
+                    }
+                }
+            }
+        }).to_list(length=1)
+
+    if not ambulances_list:
+        # If still no available ambulance, assign the nearest unit regardless of status.
+        ambulances_list = await db.ambulances.find({
             "location": {
                 "$near": {
                     "$geometry": {
@@ -210,7 +223,13 @@ async def dispatch(data: DispatchRequest):
         "ambulance_id": ambulance["_id"],
         "hospital_id": best_hospital["_id"],
 
-        "status": "active"
+        "status": "active",
+
+        "route": {
+            "distance_km": distance_km,
+            "duration_minutes": duration_minutes,
+            "polyline": polyline
+        }
     }
 
     result = await db.incidents.insert_one(incident)

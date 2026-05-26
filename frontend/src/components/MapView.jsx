@@ -9,24 +9,29 @@ import {
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
 
-// Custom marker icons with different colors and symbols
-const createCustomIcon = (color, symbol) => {
-  const svgIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="32" height="32">
-    <circle cx="12" cy="12" r="11" fill="${color}" stroke="white" stroke-width="2"/>
-    <text x="12" y="16" font-size="14" font-weight="bold" fill="white" text-anchor="middle">${symbol}</text>
-  </svg>`
+const patientIcon = L.divIcon({
+  className: "custom-div-icon",
+  html: `<div class="marker-blob marker-patient"><span>+</span></div>`,
+  iconSize: [42, 42],
+  iconAnchor: [21, 42],
+  popupAnchor: [0, -38]
+});
 
-  return L.icon({
-    iconUrl: `data:image/svg+xml;base64,${btoa(svgIcon)}`,
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32],
-  })
-}
+const ambulanceIcon = L.divIcon({
+  className: 'custom-div-icon',
+  html: `<div class="marker-blob marker-ambulance"><span>🚑</span></div>`,
+  iconSize: [46, 46],
+  iconAnchor: [23, 46],
+  popupAnchor: [0, -40],
+})
 
-const patientIcon = createCustomIcon("#EF4444", "P")      // Red for Patient
-const ambulanceIcon = createCustomIcon("#3B82F6", "A")     // Blue for Ambulance
-const hospitalIcon = createCustomIcon("#10B981", "H")      // Green for Hospital
+const hospitalIcon = L.divIcon({
+  className: "custom-div-icon",
+  html: `<div class="marker-blob marker-hospital"><span>🏥</span></div>`,
+  iconSize: [42, 42],
+  iconAnchor: [21, 42],
+  popupAnchor: [0, -38]
+});
 
 // Decode ORS polyline
 function decodePolyline(encoded) {
@@ -80,16 +85,18 @@ function decodePolyline(encoded) {
   return points
 }
 
-function MapView({
-  dispatchData,
-  liveData
-}) {
-
+function MapView({ dispatchData, liveData }) {
   if (!dispatchData) {
-    return <div>Map View</div>
+    return (
+      <div className="map-placeholder glass-card">
+        <div className="map-placeholder-inner">
+          <h2>Operational Map</h2>
+          <p>Dispatch an incident to display the live ambulance route and patient location.</p>
+        </div>
+      </div>
+    );
   }
 
-  // Patient position
   const callerPosition = [
     dispatchData.patient_location.lat,
     dispatchData.patient_location.lng
@@ -127,68 +134,53 @@ function MapView({
   }
 
   return (
+    <div className="map-card">
+      <MapContainer center={callerPosition} zoom={14} className="dashboard-map">
+        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
 
-    <MapContainer
-      center={callerPosition}
-      zoom={14}
-      style={{
-        height: "500px",
-        width: "100%",
-        marginTop: "20px"
-      }}
-    >
+        <Marker position={callerPosition} icon={patientIcon}>
+          <Popup>
+            <strong>Patient Location</strong>
+            <br />
+            Lat: {callerPosition[0].toFixed(4)}
+            <br />
+            Lng: {callerPosition[1].toFixed(4)}
+          </Popup>
+        </Marker>
 
-      <TileLayer
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
+        <Marker position={ambulancePosition} icon={ambulanceIcon}>
+          <Popup>
+            <strong>Ambulance</strong>
+            <br />
+            Status: {liveData?.status || "EN_ROUTE"}
+            <br />
+            Lat: {ambulancePosition[0].toFixed(4)}
+            <br />
+            Lng: {ambulancePosition[1].toFixed(4)}
+          </Popup>
+        </Marker>
 
-      {/* Patient Marker */}
-      <Marker position={callerPosition} icon={patientIcon}>
-        <Popup>
-          <strong>Patient Location</strong>
-          <br />
-          Lat: {callerPosition[0].toFixed(4)}
-          <br />
-          Lng: {callerPosition[1].toFixed(4)}
-        </Popup>
-      </Marker>
+        <Marker position={hospitalPosition} icon={hospitalIcon}>
+          <Popup>
+            <strong>Hospital</strong>
+            <br />
+            {dispatchData.hospital.name}
+            <br />
+            Lat: {hospitalPosition[0].toFixed(4)}
+            <br />
+            Lng: {hospitalPosition[1].toFixed(4)}
+          </Popup>
+        </Marker>
 
-      {/* Live Ambulance Marker */}
-      <Marker position={ambulancePosition} icon={ambulanceIcon}>
-        <Popup>
-          <strong>🚑 Ambulance</strong>
-          <br />
-          Status: {liveData?.status || "EN_ROUTE"}
-          <br />
-          Lat: {ambulancePosition[0].toFixed(4)}
-          <br />
-          Lng: {ambulancePosition[1].toFixed(4)}
-        </Popup>
-      </Marker>
-
-      {/* Hospital Marker */}
-      <Marker position={hospitalPosition} icon={hospitalIcon}>
-        <Popup>
-          <strong>Hospital</strong>
-          <br />
-          {dispatchData.hospital.name}
-          <br />
-          Lat: {hospitalPosition[0].toFixed(4)}
-          <br />
-          Lng: {hospitalPosition[1].toFixed(4)}
-        </Popup>
-      </Marker>
-
-      {/* Route */}
-      {
-        polyline.length > 0 &&
-        (
-          <Polyline positions={polyline} />
-        )
-      }
-
-    </MapContainer>
-  )
+        {polyline.length > 0 && (
+          <>
+            <Polyline positions={polyline} pathOptions={{ color: "rgba(2,195,154,0.18)", weight: 14, opacity: 0.7 }} />
+            <Polyline positions={polyline} pathOptions={{ color: "#02c39a", weight: 6, dashArray: "10,8" }} />
+          </>
+        )}
+      </MapContainer>
+    </div>
+  );
 }
 
 export default MapView
