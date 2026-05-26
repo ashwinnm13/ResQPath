@@ -10,9 +10,9 @@ function useWebSocket(
     if (!incidentId) return
 
     const ws = new WebSocket(
-      `ws://127.0.0.1:8000/ws/incidents/${incidentId}`
-    )
-
+  `wss://resqpath-backend.onrender.com/ws/incidents/${incidentId}`
+)
+ 
     ws.onmessage = (event) => {
 
       const data = JSON.parse(event.data)
